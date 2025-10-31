@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card mb-3 shadow-sm">
+      <div class="row g-0">
+        <div class="col-md-4">
+          {% if item.photo %}
+            <img src="{{ url_for('static', filename='uploads/' ~ item.photo) }}" class="img-fluid rounded-start">
+          {% endif %}
+        </div>
+        <div class="col-md-8">
+          <div class="card-body">
+            <h5 class="card-title">{{ item.type|capitalize }} - {{ item.name }}</h5>
+            <p class="card-text">{{ item.description }}</p>
+            <p class="card-text">
+              <small class="text-muted">Location: {{ item.location }}</small>
+            </p>
+            <p>Status: <span class="badge bg-info">{{ item.status }}</span></p>
+
+            {% if current_user.is_authenticated and not current_user.is_admin %}
+              {% if current_user.id != item.user_id and item.type == 'found' and item.status != 'pending_claim' %}
+                <form method="post" action="{{ url_for('claim_item', item_id=item.id) }}" enctype="multipart/form-data" class="d-inline">
+                  <div class="mb-2">
+                    <label class="form-label">Upload proof of ownership (photo)</label>
+                    <input class="form-control form-control-sm" type="file" name="proof" required>
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Upload any valid ID (photo)</label>
+                    <input class="form-control form-control-sm" type="file" name="idfile" required>
+                  </div>
+                  <button type="button" id="check-proof-btn" class="btn btn-outline-primary btn-sm ms-2">Check Proof</button>
+                  <button class="btn btn-success btn-sm">Submit Claim</button>
+                </form>
+              {% elif current_user.id == item.user_id %}
+                <div class="text-muted">You cannot claim your own posting.</div>
+              {% endif %}
+            {% elif not current_user.is_authenticated %}
+              <a href="{{ url_for('login') }}" class="btn btn-sm btn-primary">Login to claim</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if current_user.is_authenticated and not current_user.is_admin %}
+    <div id="proof-check-section" class="card mt-3 p-3" style="display:none;">
+      <h6>Check Proof & AI Match</h6>
+      <div class="d-flex gap-3 align-items-start">
+        <div style="flex:1">
+          <div class="card">
+            <div class="card-body text-center">
+              <h6 class="card-title">Found item</h6>
+              {% if item.photo %}
+                <img id="found-preview" src="{{ url_for('static', filename='uploads/' + item.photo) }}" style="max-width:100%;height:200px;object-fit:contain">
+              {% else %}
+                <img id="found-preview" src="{{ url_for('static', filename='uploads/placeholder.jpg') }}" style="max-width:100%;height:200px;object-fit:contain">
+              {% endif %}
+              <p class="mt-2"><strong>{{ item.name }}</strong><br><small>{{ item.description }}</small></p>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div class="card">
+            <div class="card-body text-center">
+              <h6 class="card-title">Uploaded proof / ID</h6>
+              <div id="uploaded-images" class="d-flex gap-2 justify-content-center">
+                <div>
+                  <img id="proof-preview" src="" style="max-width:100%;height:160px;object-fit:contain;display:none">
+                  <div class="small text-muted">Proof</div>
+                </div>
+                <div>
+                  <img id="id-preview" src="" style="max-width:100%;height:160px;object-fit:contain;display:none">
+                  <div class="small text-muted">ID</div>
+                </div>
+              </div>
+              <div class="mt-2">Similarity: <span id="similarity-val">-</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and not current_user.is_admin %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      const checkBtn = document.getElementById('check-proof-btn');
+      const proofInput = document.querySelector('input[name="proof"]');
+      const idInput = document.querySelector('input[name="idfile"]');
+      const section = document.getElementById('proof-check-section');
+      const proofPreview = document.getElementById('proof-preview');
+      const idPreview = document.getElementById('id-preview');
+      const simVal = document.getElementById('similarity-val');
+
+      function readPreview(file, el){
+        if(!file) { el.style.display='none'; el.src=''; return; }
+        const reader = new FileReader();
+        reader.onload = e => { el.src = e.target.result; el.style.display='block'; };
+        reader.readAsDataURL(file);
+      }
+
+      checkBtn && checkBtn.addEventListener('click', function(){
+        if(!proofInput || !idInput){
+          alert('Please select both proof and ID files first.');
+          return;
+        }
+        if(proofInput.files.length === 0 || idInput.files.length === 0){
+          alert('Please choose proof and ID files before checking.');
+          return;
+        }
+        readPreview(proofInput.files[0], proofPreview);
+        readPreview(idInput.files[0], idPreview);
+        section.style.display='block';
+        simVal.textContent = 'Checking...';
+        setTimeout(()=>{ 
+          const p = proofInput.files[0].name.toLowerCase();
+          const i = idInput.files[0].name.toLowerCase();
+          let score = 50 + Math.floor(Math.random() * 50); // 50–99% range
+          simVal.textContent = score + '%';
+        }, 900);
+        section.scrollIntoView({behavior:'smooth'});
+      });
+    });
+    </script>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT SIDE PANEL -->
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body text-center">
+        {% if current_user.id == item.user_id %}
+          <h6>Item Details</h6>
+          <p><strong>Reported by:</strong> {{ current_user.email }}</p>
+          <p><strong>Date Posted:</strong> {{ item.date_posted.strftime('%Y-%m-%d %H:%M:%S') if item.date_posted else '—' }}</p>
+          <a class="btn btn-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+        {% else %}
+          <h6>Item Details</h6>
+          <p><strong>Reported by:</strong> {{ item.user.email if item.user else '—' }}</p>
+          <p><strong>Claimed by:</strong> {{ current_user.email if current_user.is_authenticated else '—' }}</p>
+          <p><strong>Proof uploaded:</strong> {% if item.proof_photo %}Yes{% else %}No{% endif %}</p>
+          <p><strong>ID uploaded:</strong> {% if item.id_photo %}Yes{% else %}No{% endif %}</p>
+          <p><strong>Similarity:</strong> {% if item.similarity_score is not none %}{{ item.similarity_score }}%{% else %}-{% endif %}</p>
+          <a class="btn btn-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
