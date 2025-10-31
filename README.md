@@ -1,0 +1,2 @@
+PROJECT OVERVIEW:
+This project is a Campus Lost and Found Tracker with AI Image Matching, a web-based system designed to help users report, find, and claim lost or found items within the campus. It features user registration, login, posting of lost or found items, and an AI-powered image matching function that verifies proof of ownership by comparing images. Admins can review claims, check AI similarity results, and approve or reject them. The system aims to make the lost and found process faster, smarter, and more organized through automation and AI technology.
